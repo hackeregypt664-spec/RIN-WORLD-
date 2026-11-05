@@ -1,6 +1,7 @@
-// bot.js - RIN WORLD 24H
+// bot.js - RIN WORLD 24H FIXED
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
+const QRCode = require('qrcode');
 const express = require('express');
 const cors = require('cors');
 
@@ -9,10 +10,17 @@ app.use(cors());
 app.use(express.json({limit: '10mb'}));
 
 let lastJoin = null;
+let lastQr = null; // هنحفظ الـ QR هنا
 
-// ده عشان UptimeRobot يصحي البوت كل 5 دقايق
 app.get('/', (req,res)=> res.send('RIN WORLD Bot is Alive 👑🔥'));
 app.get('/join', (req,res)=> res.send('alive'));
+
+// صفحة الـ QR لازم تكون بره خالص مش جوه الـ client.on
+app.get('/qr', async (req, res) => {
+  if (!lastQr) return res.send('<center><h1>لسه مفيش QR .. استنى ثواني واعمل Refresh</h1></center>');
+  const qrImage = await QRCode.toDataURL(lastQr);
+  res.send(`<center><img src="${qrImage}" style="width:350px;margin-top:50px"><h2>اعمل سكان بالواتساب بسرعة</h2></center>`);
+});
 
 app.post('/join', (req,res)=>{
   lastJoin = req.body;
@@ -22,46 +30,22 @@ app.post('/join', (req,res)=>{
 
 const client = new Client({
   authStrategy: new LocalAuth({clientId: "rin-bot"}),
-  webVersionCache: {
-    type: 'remote',
-    remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html',
-  },
   puppeteer: {
     headless: true,
-    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--disable-dev-shm-usage']
   }
 });
 
 client.on('qr', qr => {
+  lastQr = qr; // حفظناه عشان صفحة /qr تشوفه
   console.log('اعمل سكان للـ QR ده:');
- const QRCode = require('qrcode');
-app.get('/qr', async (req, res) => {
-  const qrImage = await QRCode.toDataURL(qrCodeData);
-  res.send(`<img src="${qrImage}" style="width:400px"><h1>اعمل سكان للصورة دي بالواتساب</h1>`);
-});
+  qrcode.generate(qr, {small: true});
 });
 
 client.on('ready', () => console.log('✅ بوت رين جاهز!'));
 
-client.on('group_membership', async (notification) => {
-  if(notification.type !== 'add') return;
-  if(!lastJoin) return;
-  
-  try {
-    const chat = await notification.getChat();
-    let caption = `🧠 أهلا بيك يا *${lastJoin.name}* في عالم RIN WORLD 👑\n\nنورت يا أوتاكو 🔥\nلقبك اتحجز للأبد ومحدش هياخده تاني!\n\nاستمتع يا أسطورة ✨`;
-
-    if(lastJoin.image){
-      const media = new MessageMedia('image/jpeg', lastJoin.image.split(',')[1], 'profile.jpg');
-      await chat.sendMessage(media, {caption});
-    } else {
-      await chat.sendMessage(caption);
-    }
-    
-    console.log(`رحبت بـ ${lastJoin.name}`);
-    lastJoin = null;
-  } catch(e){ console.log(e) }
+client.on('message', async msg => {
+  console.log(msg.body);
 });
 
 client.initialize();
