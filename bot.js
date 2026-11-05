@@ -35,7 +35,11 @@ const client = new Client({
 
 client.on('qr', qr => {
   console.log('اعمل سكان للـ QR ده:');
-  qrcode.generate(qr, {small:true});
+ const QRCode = require('qrcode');
+app.get('/qr', async (req, res) => {
+  const qrImage = await QRCode.toDataURL(qrCodeData);
+  res.send(`<img src="${qrImage}" style="width:400px"><h1>اعمل سكان للصورة دي بالواتساب</h1>`);
+});
 });
 
 client.on('ready', () => console.log('✅ بوت رين جاهز!'));
